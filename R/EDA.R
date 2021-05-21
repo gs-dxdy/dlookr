@@ -128,7 +128,7 @@ eda_report <- function(.data, ...) {
 #' @method eda_report data.frame
 #' @export
 eda_report.data.frame <- function(.data, target = NULL, output_format = c("pdf", "html"),
-  output_file = NULL, output_dir = tempdir(), font_family = NULL, browse = TRUE, ...) {
+  output_file = NULL, output_dir = tempdir(), font_family = NULL, browse = TRUE, keep_tmp = FALSE, ...) {
   tryCatch(vars <- tidyselect::vars_select(names(.data),
     !! rlang::enquo(target)),
     error = function(e) {
@@ -181,17 +181,19 @@ eda_report.data.frame <- function(.data, target = NULL, output_format = c("pdf",
       compiler = "pdflatex",
       output = sub("pdf$", "tex", paste(path, output_file, sep = "/")))
     
-    file.remove(paste(path, latex_sub, sep = "/"))
-    file.remove(paste(path, latex_main, sep = "/"))
+    if (!keep_tmp) {
+      file.remove(paste(path, latex_sub, sep = "/"))
+      file.remove(paste(path, latex_main, sep = "/"))
     
-    fnames <- sub("pdf$", "", output_file)
-    fnames <- grep(fnames, list.files(path), value = TRUE)
-    fnames <- grep("\\.pdf$", fnames, invert = TRUE, value = TRUE)
-    
-    file.remove(paste(path, fnames, sep = "/"))
-    
-    unlink(paste(path, "figure", sep = "/"), recursive = TRUE)
-    unlink(paste(path, "img", sep = "/"), recursive = TRUE)
+      fnames <- sub("pdf$", "", output_file)
+      fnames <- grep(fnames, list.files(path), value = TRUE)
+      fnames <- grep("\\.pdf$", fnames, invert = TRUE, value = TRUE)
+      
+      file.remove(paste(path, fnames, sep = "/"))
+      
+      unlink(paste(path, "figure", sep = "/"), recursive = TRUE)
+      unlink(paste(path, "img", sep = "/"), recursive = TRUE)
+    }
   } else if (output_format == "html") {
     if (length(grep("ko_KR", Sys.getenv("LANG"))) == 1) {
       rmd <- "EDA_Report_KR.Rmd"
@@ -212,7 +214,8 @@ eda_report.data.frame <- function(.data, target = NULL, output_format = c("pdf",
       prettydoc::html_pretty(toc = TRUE, number_sections = TRUE),
       output_file = paste(path, output_file, sep = "/"))
     
-    file.remove(paste(path, rmd, sep = "/"))
+    if (!keep_tmp)
+      file.remove(paste(path, rmd, sep = "/"))
   }
   
   if (browse & file.exists(paste(path, output_file, sep = "/"))) {
